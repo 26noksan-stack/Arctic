@@ -219,7 +219,7 @@ with tab3:
     st.subheader("📺 북극항로 탐험, 영상으로 먼저 만나요!")
     
     # 틀고 싶은 유튜브 영상 주소 (선생님께서 원하시는 영상 주소로 수정 가능)
-    youtube_url = "https://www.youtube.com/watch?v=eYk3b6qT_7Y" 
+    youtube_url = "https://www.youtube.com/watch?v=o-tgQzqlwkQ&list=RDo-tgQzqlwkQ&start_radio=1" 
     
     # 유튜브 영상 띄우기
     st.video(youtube_url)
