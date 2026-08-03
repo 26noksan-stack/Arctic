@@ -82,7 +82,7 @@ with tab1:
     st.subheader("📺 북극항로 탐험, 영상으로 먼저 만나요!")
     
     # 🚨 원하시는 유튜브 영상 주소로 변경 가능합니다.
-    youtube_url = "https://www.youtube.com/watch?v=o-tgQzqlwkQ&list=RDo-tgQzqlwkQ&start_radio=1" 
+    youtube_url = "https://www.youtube.com/watch?v=eYk3b6qT_7Y" 
     st.video(youtube_url)
     st.info("👀 영상을 다 보셨다면, 위쪽의 **[🏠 우리들의 투표소]** 탭을 눌러 여러분의 생각을 남겨주세요!")
 
@@ -116,11 +116,7 @@ with tab2:
                 else:
                     st.warning("학교 이름, 닉네임, 이유를 모두 입력해주세요.")
                     
-        # ⭐️ 깨진 이미지 안 깨지는 안전한 링크로 교체
-        st.divider()
-        st.image("https://images.unsplash.com/photo-1589656966895-2f33e7653819?w=400&q=80", width=250)
-        st.write("<i style='color:grey;'>“친구들의 따뜻한 의견을 기다려!”</i>", unsafe_allow_html=True)
-
+        # (이미지 삭제 완료)
 
     with col2:
         st.subheader("🔥 공감 Top 10 게시판")
@@ -144,10 +140,7 @@ with tab2:
         else:
             st.info("아직 등록된 의견이 없습니다.")
 
-        # ⭐️ 깨진 이미지 안 깨지는 안전한 링크로 교체
-        st.divider()
-        st.image("https://images.unsplash.com/photo-1517581177682-a085bc7fc0ce?w=400&q=80", width=350)
-        st.write("<i style='color:grey;'>“우리들의 의견이 북극으로 가는 길을 열 거야!”</i>", unsafe_allow_html=True)
+        # (이미지 삭제 완료)
 
 # ==========================================
 # 탭 3: 친구들의 의견 모음 
@@ -184,7 +177,6 @@ with tab3:
         
         st.divider()
         
-        # ⭐️ 차트 색상 오류 해결 (예전 데이터와 최신 데이터 모두 색상 강제 지정)
         st.subheader("📊 지금 우리들의 생각은?")
         pie_data = df['choice'].value_counts().reset_index()
         pie_data.columns = ['choice', 'count']
@@ -193,8 +185,8 @@ with tab3:
         color_map = {
             '🌊 찬성': '#36A2EB', 
             '⛔ 반대': '#FF6384',
-            '찬성': '#36A2EB',    # 이전에 적어둔 글을 위한 규칙
-            '반대': '#FF6384'     # 이전에 적어둔 글을 위한 규칙
+            '찬성': '#36A2EB',    
+            '반대': '#FF6384'     
         }
         
         fig = px.pie(pie_data, values='count', names='choice', color='choice',
