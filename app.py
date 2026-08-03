@@ -34,7 +34,7 @@ with tab1:
         st.subheader("✏️ 내 의견 남기기")
         
         with st.form("opinion_form", clear_on_submit=True):
-            school_name = st.text_input("학교 이름 (예: 한국고등학교)")
+            school_name = st.text_input("학교 이름 (예: 한국초등학교)")
             nickname = st.text_input("닉네임 (예: 북극곰)")
             choice = st.selectbox("의견 선택", ["찬성", "반대"])
             comment = st.text_area("의견을 자유롭게 적어주세요.")
