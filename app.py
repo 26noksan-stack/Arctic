@@ -67,15 +67,19 @@ def load_data():
 data = load_data()
 df = pd.DataFrame(data) if data else pd.DataFrame(columns=["id", "school_name", "nickname", "choice", "comment", "likes", "created_at"])
 
-# --- ⭐️ 상태 기억하기 (투표 완료 여부 추가) ---
+# ⭐️ 핵심 해결책: 불러온 데이터에서 '찬성', '반대' 글자만 남기고 통일하기!
+if not df.empty:
+    df['choice'] = df['choice'].apply(lambda x: "찬성" if "찬성" in str(x) else "반대")
+
+# --- 상태 기억하기 ---
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 1
 if 'liked_posts' not in st.session_state:
     st.session_state.liked_posts = []
 if 'has_submitted' not in st.session_state:
-    st.session_state.has_submitted = False  # 투표를 했는지 기억하는 메모장
+    st.session_state.has_submitted = False  
 
-# ⭐️ 탭 2개로 축소 (영상 탭 삭제)
+# 탭 2개로 축소
 tab1, tab2 = st.tabs(["🏠 우리들의 투표소", "💬 친구들의 의견 모음"])
 
 # ==========================================
@@ -85,32 +89,33 @@ with tab1:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        # ⭐️ 투표를 아직 안 했다면 (입력칸 보여주기)
+        # 투표를 아직 안 했다면 (입력칸 보여주기)
         if not st.session_state.has_submitted:
             st.subheader("✏️ 나의 의견 남기기")
             with st.form("opinion_form", clear_on_submit=True):
                 school_name = st.text_input("학교 이름 (예: 한국초등학교)")
                 nickname = st.text_input("닉네임 (예: 북극곰)")
-                choice = st.selectbox("나의 선택", ["🌊 찬성", "⛔ 반대"])
+                choice_input = st.selectbox("나의 선택", ["🌊 찬성", "⛔ 반대"])
                 comment = st.text_area("이유를 자유롭게 적어주세요.")
                 submit_btn = st.form_submit_button("나의 의견 제출하기")
                 
                 if submit_btn:
                     if school_name and nickname and comment:
+                        # ⭐️ DB에 저장할 때도 이모지를 빼고 텍스트만 저장하도록 수정
+                        clean_choice = "찬성" if "찬성" in choice_input else "반대"
                         supabase.table("opinions").insert({
                             "school_name": school_name,
                             "nickname": nickname,
-                            "choice": choice,
+                            "choice": clean_choice,
                             "comment": comment,
                             "likes": 0
                         }).execute()
-                        # 제출 완료 상태로 변경!
                         st.session_state.has_submitted = True
                         st.rerun() 
                     else:
                         st.warning("학교 이름, 닉네임, 이유를 모두 입력해주세요.")
         
-        # ⭐️ 투표를 완료했다면 (입력칸을 숨기고 원그래프 보여주기)
+        # 투표를 완료했다면 (원그래프 보여주기)
         else:
             st.subheader("🎉 의견 제출 완료!")
             st.success("탐험대원님의 소중한 의견이 등록되었습니다. 현재 우리들의 생각을 확인해보세요!")
@@ -120,11 +125,10 @@ with tab1:
                 pie_data = df['choice'].value_counts().reset_index()
                 pie_data.columns = ['choice', 'count']
                 
+                # ⭐️ 색상 규칙도 아주 심플하게 정리
                 color_map = {
-                    '🌊 찬성': '#36A2EB', 
-                    '⛔ 반대': '#FF6384',
-                    '찬성': '#36A2EB',    
-                    '반대': '#FF6384'     
+                    '찬성': '#36A2EB', 
+                    '반대': '#FF6384'
                 }
                 
                 fig = px.pie(pie_data, values='count', names='choice', color='choice',
@@ -139,8 +143,9 @@ with tab1:
             top10_df = df.sort_values(by="likes", ascending=False).head(10)
             for index, row in top10_df.iterrows():
                 with st.container(border=True): 
+                    # ⭐️ 깔끔하게 정제된 데이터로 이모지 딱 한 번만 붙여서 출력
                     choice_val = row['choice']
-                    choice_icon = "🌊" if "찬성" in choice_val else "⛔"
+                    choice_icon = "🌊" if choice_val == "찬성" else "⛔"
                     st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 대원 ➡️ {choice_icon} **[{choice_val}]**")
                     st.write(row['comment'])
                     
@@ -154,7 +159,6 @@ with tab1:
                         st.rerun()
         else:
             st.info("아직 등록된 의견이 없습니다.")
-
 
 # ==========================================
 # 탭 2: 친구들의 의견 모음 
@@ -175,8 +179,9 @@ with tab2:
         
         for index, row in page_df.iterrows():
             with st.container(border=True):
+                # ⭐️ 깔끔하게 정제된 데이터로 이모지 딱 한 번만 붙여서 출력
                 choice_val = row['choice']
-                choice_icon = "🌊" if "찬성" in choice_val else "⛔"
+                choice_icon = "🌊" if choice_val == "찬성" else "⛔"
                 st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 대원 ➡️ {choice_icon} **[{choice_val}]**")
                 st.write(row['comment'])
                 
