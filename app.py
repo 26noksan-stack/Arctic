@@ -2,7 +2,7 @@ import streamlit as st
 from supabase import create_client, Client
 import pandas as pd
 import plotly.express as px
-import math # 페이지 계산을 위해 추가
+import math
 
 # 1. Supabase 연결 설정
 url = st.secrets["SUPABASE_URL"]
@@ -20,15 +20,21 @@ def load_data():
 data = load_data()
 df = pd.DataFrame(data) if data else pd.DataFrame(columns=["id", "school_name", "nickname", "choice", "comment", "likes", "created_at"])
 
-# --- 세션 상태(Session State) 초기화: 현재 페이지 기억하기 ---
+# --- ⭐️ 세션 상태(Session State) 초기화 ---
+# 현재 페이지 번호 기억하기
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 1
+
+# 내가 공감을 누른 글들의 ID를 기억할 리스트 만들기
+if 'liked_posts' not in st.session_state:
+    st.session_state.liked_posts = []
+# ------------------------------------------
 
 # 3. 탭 생성하기
 tab1, tab2 = st.tabs(["🏠 메인 대시보드", "💬 전체 의견 게시판"])
 
 # ==========================================
-# 탭 1: 메인 대시보드 (투표, 통계, Top 10)
+# 탭 1: 메인 대시보드
 # ==========================================
 with tab1:
     col1, col2 = st.columns([1, 1])
@@ -51,7 +57,6 @@ with tab1:
                         "comment": comment,
                         "likes": 0
                     }).execute()
-                    # 새 글을 쓰면 1페이지로 이동하도록 설정
                     st.session_state.current_page = 1 
                     st.success("등록 완료! '전체 의견 게시판' 탭에서 내 의견을 확인해보세요.")
                     st.rerun() 
@@ -78,15 +83,23 @@ with tab1:
                 with st.container(border=True): 
                     st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 님 ➡️ **[{row['choice']}]**")
                     st.write(row['comment'])
-                    if st.button(f"❤️ 공감 ({row['likes']})", key=f"top_like_{row['id']}"):
+                    
+                    # ⭐️ 중복 공감 방지 로직 (메인 화면)
+                    post_id = row['id']
+                    # 이 글의 ID가 내 메모장(liked_posts)에 있다면 True, 없으면 False
+                    has_liked = post_id in st.session_state.liked_posts 
+                    
+                    # disabled=has_liked 를 추가하면, 이미 누른 글은 버튼이 회색으로 변하며 안 눌러집니다.
+                    if st.button(f"❤️ 공감 ({row['likes']})", key=f"top_like_{post_id}", disabled=has_liked):
                         new_likes = row['likes'] + 1
-                        supabase.table("opinions").update({"likes": new_likes}).eq("id", row['id']).execute()
+                        supabase.table("opinions").update({"likes": new_likes}).eq("id", post_id).execute()
+                        st.session_state.liked_posts.append(post_id) # 메모장에 눌렀다고 기록
                         st.rerun()
         else:
             st.info("아직 등록된 의견이 없습니다.")
 
 # ==========================================
-# 탭 2: 전체 의견 게시판 (페이지 나누기 적용)
+# 탭 2: 전체 의견 게시판 
 # ==========================================
 with tab2:
     st.subheader("💬 모든 학생들의 의견")
@@ -94,48 +107,41 @@ with tab2:
     if not df.empty:
         all_df = df.sort_values(by="id", ascending=False)
         
-        # --- 페이지 계산 로직 ---
-        POSTS_PER_PAGE = 5 # 한 페이지에 보여줄 글 갯수 (원하는 숫자로 변경 가능)
+        POSTS_PER_PAGE = 5 
         total_posts = len(all_df)
         total_pages = math.ceil(total_posts / POSTS_PER_PAGE)
         
-        # 현재 페이지에 해당하는 데이터만 잘라내기 (Slicing)
         start_idx = (st.session_state.current_page - 1) * POSTS_PER_PAGE
         end_idx = start_idx + POSTS_PER_PAGE
         page_df = all_df.iloc[start_idx:end_idx]
         
-        # 잘라낸 데이터(5개)만 화면에 그리기
         for index, row in page_df.iterrows():
             with st.container(border=True):
                 st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 님 ➡️ **[{row['choice']}]**")
                 st.write(row['comment'])
                 
-                if st.button(f"❤️ 공감 ({row['likes']})", key=f"all_like_{row['id']}"):
+                # ⭐️ 중복 공감 방지 로직 (전체 게시판 화면)
+                post_id = row['id']
+                has_liked = post_id in st.session_state.liked_posts
+                
+                if st.button(f"❤️ 공감 ({row['likes']})", key=f"all_like_{post_id}", disabled=has_liked):
                     new_likes = row['likes'] + 1
-                    supabase.table("opinions").update({"likes": new_likes}).eq("id", row['id']).execute()
+                    supabase.table("opinions").update({"likes": new_likes}).eq("id", post_id).execute()
+                    st.session_state.liked_posts.append(post_id) # 메모장에 눌렀다고 기록
                     st.rerun()
         
         st.divider()
         
-        # --- 하단 페이지 이동 버튼 만들기 ---
-        # 화면을 3등분하여 이전 / 현재 페이지 번호 / 다음 배치
         col_prev, col_page, col_next = st.columns([1, 2, 1])
-        
         with col_prev:
-            # 1페이지일 때는 이전 버튼 비활성화 (disabled=True)
             if st.button("⬅️ 이전 페이지", disabled=(st.session_state.current_page == 1)):
                 st.session_state.current_page -= 1
                 st.rerun()
-                
         with col_page:
-            # 현재 페이지 번호 중앙 정렬
             st.markdown(f"<h4 style='text-align: center;'>{st.session_state.current_page} / {total_pages}</h4>", unsafe_allow_html=True)
-            
         with col_next:
-            # 마지막 페이지일 때는 다음 버튼 비활성화
             if st.button("다음 페이지 ➡️", disabled=(st.session_state.current_page == total_pages)):
                 st.session_state.current_page += 1
                 st.rerun()
-                
     else:
         st.info("아직 등록된 의견이 없습니다.")
