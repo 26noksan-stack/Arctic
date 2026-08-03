@@ -52,8 +52,8 @@ title_col1, title_col2 = st.columns([1, 8])
 
 with title_col1:
     # 🚨 선생님의 그림 파일이 깃허브에 있다면 아래 줄의 주석(#)을 지우고 파일명을 적어주세요.
-    st.image("11.png", width=240) 
-    #st.markdown("<h1 style='font-size: 60px;'>🧊</h1>", unsafe_allow_html=True) # 임시 아이콘
+    # st.image("내가만든그림.png", width=80) 
+    st.markdown("<h1 style='font-size: 60px;'>🧊</h1>", unsafe_allow_html=True) # 임시 아이콘
 
 with title_col2:
     st.title("북극항로 개척, 우리의 의견은?")
@@ -67,56 +67,71 @@ def load_data():
 data = load_data()
 df = pd.DataFrame(data) if data else pd.DataFrame(columns=["id", "school_name", "nickname", "choice", "comment", "likes", "created_at"])
 
+# --- ⭐️ 상태 기억하기 (투표 완료 여부 추가) ---
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 1
 if 'liked_posts' not in st.session_state:
     st.session_state.liked_posts = []
+if 'has_submitted' not in st.session_state:
+    st.session_state.has_submitted = False  # 투표를 했는지 기억하는 메모장
 
-# ⭐️ 탭 순서 변경: 영상 -> 투표 -> 의견 모음
-tab1, tab2, tab3 = st.tabs(["📺 북극항로가 뭐예요?", "🏠 우리들의 투표소", "💬 친구들의 의견 모음"])
+# ⭐️ 탭 2개로 축소 (영상 탭 삭제)
+tab1, tab2 = st.tabs(["🏠 우리들의 투표소", "💬 친구들의 의견 모음"])
 
 # ==========================================
-# 탭 1: 유튜브 영상 시청 (제일 먼저 보이게 설정)
+# 탭 1: 우리들의 투표소 (메인 화면)
 # ==========================================
 with tab1:
-    st.subheader("📺 북극항로 개척, 영상으로 먼저 만나요!")
-    
-    # 🚨 원하시는 유튜브 영상 주소로 변경 가능합니다.
-    youtube_url = "https://www.youtube.com/watch?v=o-tgQzqlwkQ&list=RDo-tgQzqlwkQ&start_radio=1" 
-    st.video(youtube_url)
-    st.info("👀 영상을 다 보셨다면, 위쪽의 **[🏠 우리들의 투표소]** 탭을 눌러 여러분의 생각을 남겨주세요!")
-
-# ==========================================
-# 탭 2: 우리들의 투표소 (메인 화면)
-# ==========================================
-with tab2:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.subheader("✏️ 나의 의견 남기기")
-        with st.form("opinion_form", clear_on_submit=True):
-            school_name = st.text_input("학교 이름 (예: 한국초등학교)")
-            nickname = st.text_input("닉네임 (예: 북극곰)")
-            choice = st.selectbox("나의 선택", ["🌊 찬성", "⛔ 반대"])
-            comment = st.text_area("이유를 자유롭게 적어주세요.")
-            submit_btn = st.form_submit_button("나의 의견 제출하기")
+        # ⭐️ 투표를 아직 안 했다면 (입력칸 보여주기)
+        if not st.session_state.has_submitted:
+            st.subheader("✏️ 나의 의견 남기기")
+            with st.form("opinion_form", clear_on_submit=True):
+                school_name = st.text_input("학교 이름 (예: 한국초등학교)")
+                nickname = st.text_input("닉네임 (예: 북극곰)")
+                choice = st.selectbox("나의 선택", ["🌊 찬성", "⛔ 반대"])
+                comment = st.text_area("이유를 자유롭게 적어주세요.")
+                submit_btn = st.form_submit_button("나의 의견 제출하기")
+                
+                if submit_btn:
+                    if school_name and nickname and comment:
+                        supabase.table("opinions").insert({
+                            "school_name": school_name,
+                            "nickname": nickname,
+                            "choice": choice,
+                            "comment": comment,
+                            "likes": 0
+                        }).execute()
+                        # 제출 완료 상태로 변경!
+                        st.session_state.has_submitted = True
+                        st.rerun() 
+                    else:
+                        st.warning("학교 이름, 닉네임, 이유를 모두 입력해주세요.")
+        
+        # ⭐️ 투표를 완료했다면 (입력칸을 숨기고 원그래프 보여주기)
+        else:
+            st.subheader("🎉 의견 제출 완료!")
+            st.success("탐험대원님의 소중한 의견이 등록되었습니다. 현재 우리들의 생각을 확인해보세요!")
             
-            if submit_btn:
-                if school_name and nickname and comment:
-                    supabase.table("opinions").insert({
-                        "school_name": school_name,
-                        "nickname": nickname,
-                        "choice": choice,
-                        "comment": comment,
-                        "likes": 0
-                    }).execute()
-                    st.session_state.current_page = 1 
-                    st.success("등록 완료! '친구들의 의견 모음' 탭에서 내 의견을 확인해보세요.")
-                    st.rerun() 
-                else:
-                    st.warning("학교 이름, 닉네임, 이유를 모두 입력해주세요.")
-                    
-        # (이미지 삭제 완료)
+            st.subheader("📊 지금 우리들의 생각은?")
+            if not df.empty:
+                pie_data = df['choice'].value_counts().reset_index()
+                pie_data.columns = ['choice', 'count']
+                
+                color_map = {
+                    '🌊 찬성': '#36A2EB', 
+                    '⛔ 반대': '#FF6384',
+                    '찬성': '#36A2EB',    
+                    '반대': '#FF6384'     
+                }
+                
+                fig = px.pie(pie_data, values='count', names='choice', color='choice',
+                             color_discrete_map=color_map)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("아직 등록된 의견이 없습니다.")
 
     with col2:
         st.subheader("🔥 공감 Top 10 게시판")
@@ -140,13 +155,12 @@ with tab2:
         else:
             st.info("아직 등록된 의견이 없습니다.")
 
-        # (이미지 삭제 완료)
 
 # ==========================================
-# 탭 3: 친구들의 의견 모음 
+# 탭 2: 친구들의 의견 모음 
 # ==========================================
-with tab3:
-    st.subheader("💬 모든 친구들의 의견")
+with tab2:
+    st.subheader("💬 모든 대원들의 의견")
     
     if not df.empty:
         all_df = df.sort_values(by="id", ascending=False)
@@ -163,7 +177,7 @@ with tab3:
             with st.container(border=True):
                 choice_val = row['choice']
                 choice_icon = "🌊" if "찬성" in choice_val else "⛔"
-                st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 친구 ➡️ {choice_icon} **[{choice_val}]**")
+                st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 대원 ➡️ {choice_icon} **[{choice_val}]**")
                 st.write(row['comment'])
                 
                 post_id = row['id']
@@ -174,24 +188,6 @@ with tab3:
                     supabase.table("opinions").update({"likes": new_likes}).eq("id", post_id).execute()
                     st.session_state.liked_posts.append(post_id)
                     st.rerun()
-        
-        st.divider()
-        
-        st.subheader("📊 지금 우리들의 생각은?")
-        pie_data = df['choice'].value_counts().reset_index()
-        pie_data.columns = ['choice', 'count']
-        
-        # 색상 맵핑 규칙 업데이트
-        color_map = {
-            '🌊 찬성': '#36A2EB', 
-            '⛔ 반대': '#FF6384',
-            '찬성': '#36A2EB',    
-            '반대': '#FF6384'     
-        }
-        
-        fig = px.pie(pie_data, values='count', names='choice', color='choice',
-                     color_discrete_map=color_map)
-        st.plotly_chart(fig, use_container_width=True)
         
         st.divider()
 
