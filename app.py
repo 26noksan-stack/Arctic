@@ -82,7 +82,7 @@ with tab1:
     st.subheader("📺 북극항로 탐험, 영상으로 먼저 만나요!")
     
     # 🚨 원하시는 유튜브 영상 주소로 변경 가능합니다.
-    youtube_url = "https://www.youtube.com/watch?v=eYk3b6qT_7Y" 
+    youtube_url = "https://www.youtube.com/watch?v=o-tgQzqlwkQ&list=RDo-tgQzqlwkQ&start_radio=1" 
     st.video(youtube_url)
     st.info("👀 영상을 다 보셨다면, 위쪽의 **[🏠 우리들의 투표소]** 탭을 눌러 여러분의 생각을 남겨주세요!")
 
