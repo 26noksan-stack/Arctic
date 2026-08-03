@@ -52,7 +52,7 @@ title_col1, title_col2 = st.columns([1, 8])
 
 with title_col1:
     # 🚨 선생님의 그림 파일이 깃허브에 있다면 아래 줄의 주석(#)을 지우고 파일명을 적어주세요.
-    st.image("11.png", width=120) 
+    st.image("11.png", width=240) 
     #st.markdown("<h1 style='font-size: 60px;'>🧊</h1>", unsafe_allow_html=True) # 임시 아이콘
 
 with title_col2:
