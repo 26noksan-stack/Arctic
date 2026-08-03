@@ -56,7 +56,7 @@ with title_col1:
     st.markdown("<h1 style='font-size: 60px;'>🧊</h1>", unsafe_allow_html=True) # 임시 아이콘
 
 with title_col2:
-    st.title("한국초 북극항로 탐험대, 우리의 의견은?")
+    st.title("북극항로 개척, 우리의 의견은?")
 # --------------------------------
 
 # 2. 데이터 불러오기 함수 
@@ -79,7 +79,7 @@ tab1, tab2, tab3 = st.tabs(["📺 북극항로가 뭐예요?", "🏠 우리들�
 # 탭 1: 유튜브 영상 시청 (제일 먼저 보이게 설정)
 # ==========================================
 with tab1:
-    st.subheader("📺 북극항로 탐험, 영상으로 먼저 만나요!")
+    st.subheader("📺 북극항로 개척, 영상으로 먼저 만나요!")
     
     # 🚨 원하시는 유튜브 영상 주소로 변경 가능합니다.
     youtube_url = "https://www.youtube.com/watch?v=o-tgQzqlwkQ&list=RDo-tgQzqlwkQ&start_radio=1" 
@@ -93,13 +93,13 @@ with tab2:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.subheader("✏️ 내 의견 남기기")
+        st.subheader("✏️ 나의 의견 남기기")
         with st.form("opinion_form", clear_on_submit=True):
             school_name = st.text_input("학교 이름 (예: 한국초등학교)")
             nickname = st.text_input("닉네임 (예: 북극곰)")
             choice = st.selectbox("나의 선택", ["🌊 찬성", "⛔ 반대"])
             comment = st.text_area("이유를 자유롭게 적어주세요.")
-            submit_btn = st.form_submit_button("탐험대에 의견 제출하기")
+            submit_btn = st.form_submit_button("나 의견 제출하기")
             
             if submit_btn:
                 if school_name and nickname and comment:
@@ -146,7 +146,7 @@ with tab2:
 # 탭 3: 친구들의 의견 모음 
 # ==========================================
 with tab3:
-    st.subheader("💬 모든 대원들의 의견")
+    st.subheader("💬 모든 친구들의 의견")
     
     if not df.empty:
         all_df = df.sort_values(by="id", ascending=False)
@@ -163,7 +163,7 @@ with tab3:
             with st.container(border=True):
                 choice_val = row['choice']
                 choice_icon = "🌊" if "찬성" in choice_val else "⛔"
-                st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 대원 ➡️ {choice_icon} **[{choice_val}]**")
+                st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 친구 ➡️ {choice_icon} **[{choice_val}]**")
                 st.write(row['comment'])
                 
                 post_id = row['id']
