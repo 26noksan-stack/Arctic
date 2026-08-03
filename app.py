@@ -99,7 +99,7 @@ with tab2:
             nickname = st.text_input("닉네임 (예: 북극곰)")
             choice = st.selectbox("나의 선택", ["🌊 찬성", "⛔ 반대"])
             comment = st.text_area("이유를 자유롭게 적어주세요.")
-            submit_btn = st.form_submit_button("나 의견 제출하기")
+            submit_btn = st.form_submit_button("나의 의견 제출하기")
             
             if submit_btn:
                 if school_name and nickname and comment:
