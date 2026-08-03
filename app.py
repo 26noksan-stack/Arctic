@@ -2,13 +2,13 @@ import streamlit as st
 from supabase import create_client, Client
 import pandas as pd
 import plotly.express as px
+import math # 페이지 계산을 위해 추가
 
 # 1. Supabase 연결 설정
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
-# 웹사이트 기본 설정
 st.set_page_config(page_title="북극항로 찬반 투표", page_icon="🚢", layout="wide")
 st.title("🚢 북극항로 개척, 학생들의 의견은?")
 
@@ -20,7 +20,11 @@ def load_data():
 data = load_data()
 df = pd.DataFrame(data) if data else pd.DataFrame(columns=["id", "school_name", "nickname", "choice", "comment", "likes", "created_at"])
 
-# 3. 탭(Tab) 생성하기
+# --- 세션 상태(Session State) 초기화: 현재 페이지 기억하기 ---
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 1
+
+# 3. 탭 생성하기
 tab1, tab2 = st.tabs(["🏠 메인 대시보드", "💬 전체 의견 게시판"])
 
 # ==========================================
@@ -29,10 +33,8 @@ tab1, tab2 = st.tabs(["🏠 메인 대시보드", "💬 전체 의견 게시판"
 with tab1:
     col1, col2 = st.columns([1, 1])
     
-    # --- 왼쪽 영역: 의견 제출 및 통계 ---
     with col1:
         st.subheader("✏️ 내 의견 남기기")
-        
         with st.form("opinion_form", clear_on_submit=True):
             school_name = st.text_input("학교 이름 (예: 한국초등학교)")
             nickname = st.text_input("닉네임 (예: 북극곰)")
@@ -49,7 +51,8 @@ with tab1:
                         "comment": comment,
                         "likes": 0
                     }).execute()
-                    # 탭 기능을 안내하는 성공 메시지
+                    # 새 글을 쓰면 1페이지로 이동하도록 설정
+                    st.session_state.current_page = 1 
                     st.success("등록 완료! '전체 의견 게시판' 탭에서 내 의견을 확인해보세요.")
                     st.rerun() 
                 else:
@@ -67,18 +70,14 @@ with tab1:
         else:
             st.info("아직 등록된 의견이 없어 통계를 낼 수 없습니다.")
 
-    # --- 오른쪽 영역: Top 10 ---
     with col2:
         st.subheader("🔥 공감 Top 10")
-        
         if not df.empty:
             top10_df = df.sort_values(by="likes", ascending=False).head(10)
-            
             for index, row in top10_df.iterrows():
                 with st.container(border=True): 
                     st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 님 ➡️ **[{row['choice']}]**")
                     st.write(row['comment'])
-                    # 메인 화면에서도 공감을 누를 수 있도록 기능 유지
                     if st.button(f"❤️ 공감 ({row['likes']})", key=f"top_like_{row['id']}"):
                         new_likes = row['likes'] + 1
                         supabase.table("opinions").update({"likes": new_likes}).eq("id", row['id']).execute()
@@ -87,25 +86,56 @@ with tab1:
             st.info("아직 등록된 의견이 없습니다.")
 
 # ==========================================
-# 탭 2: 전체 의견 게시판 (모든 글 보기 및 공감)
+# 탭 2: 전체 의견 게시판 (페이지 나누기 적용)
 # ==========================================
 with tab2:
     st.subheader("💬 모든 학생들의 의견")
-    st.write("다른 학생들의 의견을 읽고 공감(❤️)을 눌러주세요! 많은 공감을 받으면 메인 화면 Top 10에 올라갑니다.")
     
     if not df.empty:
-        # 전체 게시판은 새 글이 가장 위로 오도록 최신순(id 내림차순) 정렬
         all_df = df.sort_values(by="id", ascending=False)
         
-        for index, row in all_df.iterrows():
+        # --- 페이지 계산 로직 ---
+        POSTS_PER_PAGE = 5 # 한 페이지에 보여줄 글 갯수 (원하는 숫자로 변경 가능)
+        total_posts = len(all_df)
+        total_pages = math.ceil(total_posts / POSTS_PER_PAGE)
+        
+        # 현재 페이지에 해당하는 데이터만 잘라내기 (Slicing)
+        start_idx = (st.session_state.current_page - 1) * POSTS_PER_PAGE
+        end_idx = start_idx + POSTS_PER_PAGE
+        page_df = all_df.iloc[start_idx:end_idx]
+        
+        # 잘라낸 데이터(5개)만 화면에 그리기
+        for index, row in page_df.iterrows():
             with st.container(border=True):
                 st.markdown(f"🏫 **{row['school_name']}** | **{row['nickname']}** 님 ➡️ **[{row['choice']}]**")
                 st.write(row['comment'])
                 
-                # 전체 게시판용 공감 버튼
                 if st.button(f"❤️ 공감 ({row['likes']})", key=f"all_like_{row['id']}"):
                     new_likes = row['likes'] + 1
                     supabase.table("opinions").update({"likes": new_likes}).eq("id", row['id']).execute()
                     st.rerun()
+        
+        st.divider()
+        
+        # --- 하단 페이지 이동 버튼 만들기 ---
+        # 화면을 3등분하여 이전 / 현재 페이지 번호 / 다음 배치
+        col_prev, col_page, col_next = st.columns([1, 2, 1])
+        
+        with col_prev:
+            # 1페이지일 때는 이전 버튼 비활성화 (disabled=True)
+            if st.button("⬅️ 이전 페이지", disabled=(st.session_state.current_page == 1)):
+                st.session_state.current_page -= 1
+                st.rerun()
+                
+        with col_page:
+            # 현재 페이지 번호 중앙 정렬
+            st.markdown(f"<h4 style='text-align: center;'>{st.session_state.current_page} / {total_pages}</h4>", unsafe_allow_html=True)
+            
+        with col_next:
+            # 마지막 페이지일 때는 다음 버튼 비활성화
+            if st.button("다음 페이지 ➡️", disabled=(st.session_state.current_page == total_pages)):
+                st.session_state.current_page += 1
+                st.rerun()
+                
     else:
         st.info("아직 등록된 의견이 없습니다.")
